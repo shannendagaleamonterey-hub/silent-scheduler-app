@@ -2,12 +2,29 @@
 
 A new Flutter project.
 
-Getting Started
-This project is a starting point for a Flutter application.
+## Overview
+Silent Scheduler is a Flutter-based mobile application that automatically switches devices to silent or vibration mode based on scheduled events.
 
-A few resources to get you started if this is your first Flutter project:
+## Features
+- Schedule management
+- Notification alerts
+- Multilingual support (English, Spanish, Filipino)
+- World clock
+- Local storage using Shared Preferences
 
-Learn Flutter
-Write your first Flutter app
-Flutter learning resources
-For help getting started with Flutter development, view the online documentation, which offers tutorials, samples, guidance on mobile development, and a full API reference.
+## Technologies Used
+- Flutter & Dart
+- Visual Studio Code
+- GitHub (Version Control)
+
+## How to Run
+1. Clone the repository
+2. Run `flutter pub get`
+3. Run `flutter run`
+
+## Team Members
+- Shannen Monterey
+- Kusum R C
+- Anjana Rai
+- Salon Srestha
+- Khagendra Thapa
