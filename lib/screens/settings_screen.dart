@@ -68,10 +68,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 labelText: t(language, 'language'),
                 prefixIcon: const Icon(Icons.language),
               ),
-              items: const [
+              items: const <DropdownMenuItem<String>>[
                 DropdownMenuItem(value: 'en', child: Text('English')),
                 DropdownMenuItem(value: 'es', child: Text('Spanish')),
                 DropdownMenuItem(value: 'fil', child: Text('Filipino')),
+                DropdownMenuItem(value: 'ne', child: Text('Nepali')),
               ],
               onChanged: (value) {
                 if (value != null) {

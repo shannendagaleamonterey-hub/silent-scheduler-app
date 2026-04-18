@@ -3,6 +3,7 @@ import '../models/schedule.dart';
 import '../services/notification_service.dart';
 import '../services/storage_service.dart';
 import '../utils/app_strings.dart';
+import 'package:silent_scheduler_app/services/dnd_service.dart';
 
 class AddScheduleScreen extends StatefulWidget {
   const AddScheduleScreen({super.key});
@@ -48,45 +49,40 @@ class _AddScheduleScreenState extends State<AddScheduleScreen> {
     return endMinutes > startMinutes;
   }
 
-  Future<void> saveSchedule() async {
-    final t = AppStrings.text;
+Future<void> saveSchedule() async {
+  final t = AppStrings.text;
 
-    if (titleController.text.trim().isEmpty ||
-        selectedDate == null ||
-        startTime == null ||
-        endTime == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(t(language, 'pleaseCompleteFields'))),
-      );
-      return;
-    }
-
-    if (!isEndTimeValid()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(t(language, 'endTimeError'))),
-      );
-      return;
-    }
-
-    final List<Schedule> existingSchedules =
-        await StorageService.loadSchedules();
-
-    final newSchedule = Schedule(
-      title: titleController.text.trim(),
-      date: selectedDate!.toIso8601String(),
-      startTime: formatTime(startTime),
-      endTime: formatTime(endTime),
-      mode: selectedMode,
-      language: language,
+  if (titleController.text.trim().isEmpty ||
+      selectedDate == null ||
+      startTime == null ||
+      endTime == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(t(language, 'pleaseCompleteFields'))),
     );
+    return;
+  }
 
-    existingSchedules.add(newSchedule);
-    await StorageService.saveSchedules(existingSchedules);
+  if (!isEndTimeValid()) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(t(language, 'endTimeError'))),
+    );
+    return;
+  }
 
-    final notificationsEnabled =
-    await StorageService.loadNotificationsEnabled();
+  final List<Schedule> existingSchedules = await StorageService.loadSchedules();
 
-if (notificationsEnabled) {
+  final newSchedule = Schedule(
+    title: titleController.text.trim(),
+    date: selectedDate!.toIso8601String(),
+    startTime: formatTime(startTime),
+    endTime: formatTime(endTime),
+    mode: selectedMode,
+    language: language,
+  );
+
+  existingSchedules.add(newSchedule);
+  await StorageService.saveSchedules(existingSchedules);
+
   final scheduledStart = DateTime(
     selectedDate!.year,
     selectedDate!.month,
@@ -95,33 +91,77 @@ if (notificationsEnabled) {
     startTime!.minute,
   );
 
-  // 🔥 DEMO FIX (20 seconds)
-  final reminderTime = DateTime.now().add(const Duration(seconds: 20));
-
-  debugPrint('Now: ${DateTime.now()}');
-  debugPrint('Meeting start: $scheduledStart');
-  debugPrint('Reminder time: $reminderTime');
-
-  final notificationId =
-      DateTime.now().millisecondsSinceEpoch ~/ 1000;
-
-  await NotificationService.scheduleNotification(
-    id: notificationId,
-    title: 'Meeting Reminder',
-    body: 'Your meeting is coming soon. Please switch to $selectedMode mode.',
-    scheduledTime: reminderTime,
+  final scheduledEnd = DateTime(
+    selectedDate!.year,
+    selectedDate!.month,
+    selectedDate!.day,
+    endTime!.hour,
+    endTime!.minute,
   );
 
-  await NotificationService.printPendingNotifications();
+  final notificationsEnabled = await StorageService.loadNotificationsEnabled();
 
-  ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(content: Text('Reminder scheduled for 20 seconds later')),
-  );
-}
+  if (notificationsEnabled) {
+    try {
+      final notificationId = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+
+      await NotificationService.scheduleNotification(
+        id: notificationId,
+        title: 'Meeting Reminder',
+        body: 'Your meeting is coming soon. Please switch to $selectedMode mode.',
+        scheduledTime: scheduledStart,
+      );
+    } catch (e) {
+      debugPrint('Notification scheduling failed: $e');
+    }
+  }
+
+  try {
+    final dndGranted = await DndService.isAccessGranted();
 
     if (!mounted) return;
-    Navigator.pop(context, true);
+
+    if (!dndGranted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Schedule saved, but please enable Do Not Disturb access.'),
+        ),
+      );
+
+      Navigator.pop(context, true);
+      return;
+    }
+
+    await DndService.scheduleModeChange(
+      startTime: scheduledStart,
+      endTime: scheduledEnd,
+      mode: selectedMode,
+    );
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Schedule saved. $selectedMode mode will activate at the meeting start time.',
+        ),
+      ),
+    );
+  } catch (e) {
+    debugPrint('DND scheduling failed: $e');
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Schedule saved, but phone mode automation is not available yet.',
+        ),
+      ),
+    );
   }
+
+  Navigator.pop(context, true);
+}
+
   @override
   void dispose() {
     titleController.dispose();
@@ -177,7 +217,9 @@ if (notificationsEnabled) {
                   setState(() => startTime = picked);
                 }
               },
-              child: Text('${t(language, 'startTime')}: ${formatTime(startTime)}'),
+              child: Text(
+                '${t(language, 'startTime')}: ${formatTime(startTime)}',
+              ),
             ),
             const SizedBox(height: 16),
             ElevatedButton(
@@ -190,7 +232,9 @@ if (notificationsEnabled) {
                   setState(() => endTime = picked);
                 }
               },
-              child: Text('${t(language, 'endTime')}: ${formatTime(endTime)}'),
+              child: Text(
+                '${t(language, 'endTime')}: ${formatTime(endTime)}',
+              ),
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(

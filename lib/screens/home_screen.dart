@@ -6,7 +6,7 @@ import 'add_schedule_screen.dart';
 import 'history_screen.dart';
 import 'settings_screen.dart';
 import 'world_clock_screen.dart';
-import 'package:silent_scheduler_app/services/notification_service.dart';
+import 'package:silent_scheduler_app/services/dnd_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -129,6 +129,37 @@ class _HomeScreenState extends State<HomeScreen> {
               icon: const Icon(Icons.add),
               label: Text(t(language, 'addSchedule')),
             ),
+            const SizedBox(height: 10),
+
+ElevatedButton(
+  onPressed: () async {
+    final granted = await DndService.isAccessGranted();
+
+    if (!granted) {
+      await DndService.openSettings();
+      return;
+    }
+
+    await DndService.enableSilentMode();
+  },
+  child: const Text('Enable Silent Mode (Test)'),
+),
+
+const SizedBox(height: 10),
+
+ElevatedButton(
+  onPressed: () async {
+    final granted = await DndService.isAccessGranted();
+
+    if (!granted) {
+      await DndService.openSettings();
+      return;
+    }
+
+    await DndService.disableSilentMode();
+  },
+  child: const Text('Disable Silent Mode'),
+),
             const SizedBox(height: 20),
             buildMenuButton(
               icon: Icons.public,

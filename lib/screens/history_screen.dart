@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../models/schedule.dart';
 import '../services/storage_service.dart';
 import '../utils/app_strings.dart';
@@ -30,6 +31,15 @@ class _HistoryScreenState extends State<HistoryScreen> {
     });
   }
 
+  String formatScheduleDate(String rawDate) {
+    try {
+      final parsedDate = DateTime.parse(rawDate);
+      return DateFormat('dd MMM yyyy').format(parsedDate);
+    } catch (e) {
+      return rawDate;
+    }
+  }
+
   Future<void> deleteSchedule(int index) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -54,7 +64,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
         schedules.removeAt(index);
       });
 
-      // Save back in original order if needed
       await StorageService.saveSchedules(schedules.reversed.toList());
 
       if (!mounted) return;
@@ -81,6 +90,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               itemCount: schedules.length,
               itemBuilder: (context, index) {
                 final schedule = schedules[index];
+                final formattedDate = formatScheduleDate(schedule.date);
 
                 return Card(
                   margin: const EdgeInsets.symmetric(
@@ -88,11 +98,20 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     vertical: 6,
                   ),
                   child: ListTile(
-                    title: Text(schedule.title),
+                    leading: CircleAvatar(
+                      child: Icon(
+                        schedule.mode == 'silent'
+                            ? Icons.volume_off
+                            : Icons.vibration,
+                      ),
+                    ),
+                    title: Text(
+                      schedule.title,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
                     subtitle: Text(
-                      'Date: ${schedule.date}\n'
-                      'Start: ${schedule.startTime}\n'
-                      'End: ${schedule.endTime}\n'
+                      'Date: $formattedDate\n'
+                      'Start: ${schedule.startTime} | End: ${schedule.endTime}\n'
                       'Mode: ${schedule.mode}',
                     ),
                     trailing: IconButton(

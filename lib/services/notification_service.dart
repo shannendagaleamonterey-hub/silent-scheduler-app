@@ -7,31 +7,31 @@ class NotificationService {
   static final FlutterLocalNotificationsPlugin _notificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
-static Future<void> init() async {
-  const androidSettings =
-      AndroidInitializationSettings('@mipmap/ic_launcher');
+  static Future<void> init() async {
+    const androidSettings =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
 
-  const settings = InitializationSettings(
-    android: androidSettings,
-  );
+    const settings = InitializationSettings(
+      android: androidSettings,
+    );
 
-  tz.initializeTimeZones();
+    tz.initializeTimeZones();
+    tz.setLocalLocation(tz.getLocation('Australia/Sydney'));
 
-  // 🔥 IMPORTANT FIX
-  tz.setLocalLocation(tz.getLocation('Australia/Sydney'));
+    await _notificationsPlugin.initialize(
+      settings: settings,
+    );
 
-  await _notificationsPlugin.initialize(settings);
+    await _notificationsPlugin
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.requestNotificationsPermission();
 
-  await _notificationsPlugin
-      .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin>()
-      ?.requestNotificationsPermission();
-
-  await _notificationsPlugin
-      .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin>()
-      ?.requestExactAlarmsPermission();
-}
+    await _notificationsPlugin
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.requestExactAlarmsPermission();
+  }
 
   static Future<void> showInstantNotification({
     required String title,
@@ -48,40 +48,44 @@ static Future<void> init() async {
     const details = NotificationDetails(android: androidDetails);
 
     await _notificationsPlugin.show(
-      0,
-      title,
-      body,
-      details,
+      id: 0,
+      title: title,
+      body: body,
+      notificationDetails: details,
     );
   }
 
   static Future<void> scheduleNotification({
-  required int id,
-  required String title,
-  required String body,
-  required DateTime scheduledTime,
-}) async {
-  const androidDetails = AndroidNotificationDetails(
-    'silent_scheduler_channel',
-    'Silent Scheduler Notifications',
-    channelDescription: 'Notifications for meeting reminders',
-    importance: Importance.max,
-    priority: Priority.high,
-  );
+    required int id,
+    required String title,
+    required String body,
+    required DateTime scheduledTime,
+  }) async {
+    const androidDetails = AndroidNotificationDetails(
+      'silent_scheduler_channel',
+      'Silent Scheduler Notifications',
+      channelDescription: 'Notifications for meeting reminders',
+      importance: Importance.max,
+      priority: Priority.high,
+    );
 
-  const details = NotificationDetails(android: androidDetails);
+    const details = NotificationDetails(android: androidDetails);
 
-  await _notificationsPlugin.zonedSchedule(
-  id,
-  title,
-  body,
-  tz.TZDateTime.from(scheduledTime, tz.local),
-  details,
-  androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-  uiLocalNotificationDateInterpretation:
-      UILocalNotificationDateInterpretation.absoluteTime,
-  );
-}
+    final tzScheduled = tz.TZDateTime.from(scheduledTime, tz.local);
+
+    debugPrint('Now: ${DateTime.now()}');
+    debugPrint('ScheduledTime raw: $scheduledTime');
+    debugPrint('ScheduledTime tz: $tzScheduled');
+
+    await _notificationsPlugin.zonedSchedule(
+      id: id,
+      title: title,
+      body: body,
+      scheduledDate: tzScheduled,
+      notificationDetails: details,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+    );
+  }
 
   static Future<void> printPendingNotifications() async {
     final pending = await _notificationsPlugin.pendingNotificationRequests();
